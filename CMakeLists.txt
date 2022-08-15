@@ -28,11 +28,6 @@ Options
 
 project(jluna VERSION 0.9.1 LANGUAGES CXX)
 
-include(cmake/project-is-top-level.cmake)
-if(PROJECT_IS_TOP_LEVEL)
-    option(jluna_DEVELOPER_MODE "Enable developer mode" OFF)
-endif()
-
 ### Find Julia ###
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/find")
@@ -43,8 +38,6 @@ find_package(Julia 1.7.0 REQUIRED)
 find_package(Threads)
 
 ### Configure Files ###
-
-set(SHARED_LIBARY_NAME "${CMAKE_INSTALL_PREFIX}/${CMAKE_SHARED_LIBRARY_PREFIX}jluna${CMAKE_SHARED_LIBRARY_SUFFIX}")
 
 file(READ
     include/julia/jluna.jl
@@ -120,10 +113,16 @@ add_library(jluna SHARED
 )
 
 target_compile_features(jluna PUBLIC cxx_std_20)
-target_include_directories(jluna PUBLIC "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>")
+target_include_directories(
+  jluna 
+    PUBLIC
+    "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/jluna>"
+  )
 target_link_libraries(jluna PUBLIC
-    "$<BUILD_INTERFACE:Julia::Julia>"
-    "$<BUILD_INTERFACE:Threads::Threads>"
+    "Julia::Julia"
+    "Threads::Threads"
 )
 
 ### HACK: export all symbols on Windows ###
@@ -131,14 +130,33 @@ set_target_properties(jluna PROPERTIES
     WINDOWS_EXPORT_ALL_SYMBOLS YES # TODO
     VERSION "${PROJECT_VERSION}"
     SOVERSION "${PROJECT_VERSION}"
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_INSTALL_PREFIX}"
 )
 
 ### Install rules ###
-
-if(NOT CMAKE_SKIP_INSTALL_RULES)
-    include(cmake/install-rules.cmake)
-endif()
+include(GNUInstallDirs)
+install(TARGETS jluna EXPORT JlunaTargets
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  )
+install(EXPORT JlunaTargets NAMESPACE Jluna:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Jluna/)
+include(CMakePackageConfigHelpers)
+configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/JlunaConfig.cmake.in
+  "${CMAKE_CURRENT_BINARY_DIR}/JlunaConfig.cmake"
+  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Jluna
+)
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/JlunaConfigVersion.cmake"
+  VERSION "${PROJECT_VERSION}"
+  COMPATIBILITY AnyNewerVersion
+)
+install(FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/find/FindJulia.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/JlunaConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/JlunaConfigVersion.cmake"
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Jluna
+)
+install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jluna/include)
 
 include(CTest)
 ### Declare Test ###

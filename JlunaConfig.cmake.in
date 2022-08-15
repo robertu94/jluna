@@ -1,0 +1,10 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/JlunaTargets.cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
+message(ERROR jluna ${CMAKE_CURRENT_LIST_DIR})
+
+find_package(Threads REQUIRED)
+find_package(Julia REQUIRED)
+
+check_required_components(Jluna)
